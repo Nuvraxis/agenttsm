@@ -1,0 +1,19 @@
+{
+  "name": "08-observability",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --conditions=@nuvraxis-org/source src/main.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@nuvraxis-org/agenttsm": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/sdk-trace-base": "catalog:",
+    "examples-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}

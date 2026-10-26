@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "customConditions": ["@nuvraxis-org/source"]
+  },
+  "include": ["next-env.d.ts", "app", "lib", "scripts", "next.config.ts", ".next/types/**/*.ts"]
+}

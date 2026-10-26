@@ -1,0 +1,17 @@
+{
+  "name": "05-research-pipeline",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --conditions=@nuvraxis-org/source src/main.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@nuvraxis-org/agenttsm": "workspace:*",
+    "examples-shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  }
+}
