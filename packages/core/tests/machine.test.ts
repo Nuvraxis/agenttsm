@@ -340,10 +340,8 @@ describe("test()", () => {
   it("feeds scripted inputs, skips timed waits and returns the trace", async () => {
     const m = defineMachine(flow);
     const result = await m.test({}, { inputs: ["yes"], llm: new FakeLLM(["ok"]) });
-    expect(result.snapshot).toMatchObject({
-      status: "done",
-      ctx: { answer: "ok", lastInput: "yes" },
-    });
+    expect(result.snapshot).toMatchObject({ status: "done", ctx: { answer: "ok" } });
+    expect(result.snapshot.ctx).not.toHaveProperty("lastInput");
     expect(result.trace.filter((e) => e.kind === "snapshot")).toHaveLength(6);
     expect(await m.get(result.snapshot.runId)).toBeUndefined();
   });

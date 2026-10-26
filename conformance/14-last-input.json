@@ -1,0 +1,34 @@
+{
+  "name": "only the latest resume sets lastInput: start ignores it and a resume without input clears it",
+  "rules": [10],
+  "machine": {
+    "initial": "draft",
+    "states": {
+      "draft": {
+        "to": ["review"],
+        "do": [{ "copyInput": "atStart" }],
+        "then": { "to": "review", "wait": { "kind": "human" } }
+      },
+      "review": {
+        "to": ["settle"],
+        "do": [{ "copyInput": "approval" }],
+        "then": { "to": "settle", "wait": { "kind": "webhook", "name": "payment" } }
+      },
+      "settle": {
+        "do": [{ "copyInput": "payment" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "ctx": { "lastInput": { "approved": true } },
+  "ops": [
+    { "check": { "status": "waiting", "state": "review", "ctx": { "atStart": null } } },
+    { "resume": { "input": { "approved": true } } },
+    { "check": { "status": "waiting", "state": "settle" } },
+    { "resume": {} }
+  ],
+  "expect": {
+    "status": "done",
+    "ctx": { "atStart": null, "approval": { "approved": true }, "payment": null }
+  }
+}
