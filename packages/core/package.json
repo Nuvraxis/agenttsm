@@ -1,0 +1,61 @@
+{
+  "name": "@nuvraxis-org/agenttsm",
+  "version": "0.0.0",
+  "description": "A small, typed, zero-dependency state machine runtime for AI agent workflows.",
+  "keywords": [
+    "state-machine",
+    "agents",
+    "ai",
+    "llm",
+    "workflow",
+    "fsm"
+  ],
+  "homepage": "https://github.com/Nuvraxis/agenttsm#readme",
+  "bugs": {
+    "url": "https://github.com/Nuvraxis/agenttsm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nuvraxis/agenttsm.git",
+    "directory": "packages/core"
+  },
+  "license": "MIT",
+  "author": "Sajankumar Vijayan",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=26"
+  },
+  "exports": {
+    ".": {
+      "@nuvraxis-org/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "@nuvraxis-org/source": "./src/testing/index.ts",
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc && tsc -p tests",
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
