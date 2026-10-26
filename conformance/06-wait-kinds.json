@@ -1,0 +1,38 @@
+{
+  "name": "sleep, until and webhook waits share one resume path",
+  "rules": [4],
+  "machine": {
+    "initial": "a",
+    "states": {
+      "a": { "to": ["b"], "then": { "to": "b", "wait": { "kind": "sleep", "ms": 10 } } },
+      "b": {
+        "to": ["c"],
+        "then": { "to": "c", "wait": { "kind": "until", "at": "2000-01-01T00:00:00.000Z" } }
+      },
+      "c": { "to": ["d"], "then": { "to": "d", "wait": { "kind": "webhook", "name": "payment" } } },
+      "d": { "do": [{ "copyInput": "payment" }], "then": { "done": true } }
+    }
+  },
+  "ctx": {},
+  "ops": [
+    { "waitFor": { "status": "waiting", "state": "d" } },
+    { "check": { "waiting": { "kind": "webhook", "name": "payment" } } },
+    { "resume": { "input": "paid" } }
+  ],
+  "expect": {
+    "status": "done",
+    "ctx": { "payment": "paid" },
+    "events": [
+      { "type": "transition", "data": { "to": "b" } },
+      { "type": "wait", "data": { "kind": "sleep" } },
+      { "type": "resume", "state": "b" },
+      { "type": "transition", "data": { "to": "c" } },
+      { "type": "wait", "data": { "kind": "until" } },
+      { "type": "resume", "state": "c" },
+      { "type": "transition", "data": { "to": "d" } },
+      { "type": "wait", "data": { "kind": "webhook" } },
+      { "type": "resume", "state": "d" },
+      { "type": "done" }
+    ]
+  }
+}

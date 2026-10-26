@@ -1,0 +1,23 @@
+{
+  "name": "two concurrent resumes of one run: exactly one proceeds",
+  "rules": [9],
+  "machine": {
+    "initial": "ask",
+    "states": {
+      "ask": { "to": ["apply"], "then": { "to": "apply", "wait": { "kind": "human" } } },
+      "apply": { "do": [{ "count": "applied" }], "then": { "done": true } }
+    }
+  },
+  "ctx": {},
+  "ops": [{ "resumeConcurrently": { "count": 2, "input": "go" }, "conflicts": 1 }],
+  "expect": {
+    "status": "done",
+    "ctx": { "applied": 1 },
+    "events": [
+      { "type": "transition" },
+      { "type": "wait" },
+      { "type": "resume" },
+      { "type": "done" }
+    ]
+  }
+}

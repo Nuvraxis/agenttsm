@@ -1,0 +1,27 @@
+{
+  "name": "a state that keeps failing ends the run as failed with the last error",
+  "rules": [2, 6],
+  "machine": {
+    "initial": "fetch",
+    "retry": { "baseMs": 0, "maxMs": 0 },
+    "states": {
+      "fetch": {
+        "maxRetries": 1,
+        "do": [{ "tool": "search", "as": "result" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "tools": { "search": [{ "error": "first" }, { "error": "second" }] },
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "second",
+    "attempt": 1,
+    "step": 0,
+    "events": [
+      { "type": "retry", "data": { "attempt": 1, "error": "first" } },
+      { "type": "failed", "data": { "reason": "second" } }
+    ]
+  }
+}

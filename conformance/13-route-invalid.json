@@ -1,0 +1,22 @@
+{
+  "name": "route() fails the step after two invalid answers",
+  "rules": [2],
+  "machine": {
+    "initial": "triage",
+    "states": {
+      "triage": {
+        "to": ["billing", "support"],
+        "do": [{ "route": ["billing", "support"], "prompt": "Where?" }]
+      },
+      "billing": { "then": { "done": true } },
+      "support": { "then": { "done": true } }
+    }
+  },
+  "llm": [{ "text": "sales" }, { "text": "marketing" }],
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "did not pick one of: billing, support",
+    "events": [{ "type": "route" }, { "type": "route" }, { "type": "failed" }]
+  }
+}

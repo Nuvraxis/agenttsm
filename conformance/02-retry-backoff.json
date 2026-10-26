@@ -1,0 +1,35 @@
+{
+  "name": "failed attempts retry with the attempt count stored in the snapshot",
+  "rules": [1, 2, 6],
+  "machine": {
+    "initial": "fetch",
+    "retry": { "baseMs": 0, "maxMs": 0 },
+    "states": {
+      "fetch": {
+        "maxRetries": 2,
+        "do": [{ "tool": "search", "as": "result" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "tools": { "search": [{ "error": "boom 1" }, { "error": "boom 2" }, { "value": 42 }] },
+  "ctx": {},
+  "expect": {
+    "status": "done",
+    "attempt": 0,
+    "step": 1,
+    "ctx": { "result": 42 },
+    "toolCalls": { "search": 3 },
+    "events": [
+      { "type": "retry", "state": "fetch", "data": { "attempt": 1, "error": "boom 1" } },
+      { "type": "retry", "state": "fetch", "data": { "attempt": 2, "error": "boom 2" } },
+      { "type": "done", "state": "fetch" }
+    ],
+    "snapshots": [
+      { "version": 1, "attempt": 0, "status": "running" },
+      { "version": 2, "attempt": 1, "status": "running" },
+      { "version": 3, "attempt": 2, "status": "running" },
+      { "version": 4, "attempt": 0, "status": "done" }
+    ]
+  }
+}

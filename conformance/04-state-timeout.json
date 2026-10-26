@@ -1,0 +1,25 @@
+{
+  "name": "a handler slower than timeoutMs is aborted and counts as a failed attempt",
+  "rules": [2, 3],
+  "machine": {
+    "initial": "slow",
+    "retry": { "baseMs": 0, "maxMs": 0 },
+    "states": {
+      "slow": {
+        "timeoutMs": 20,
+        "maxRetries": 1,
+        "do": [{ "delay": 500 }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "timeout",
+    "events": [
+      { "type": "retry", "state": "slow", "data": { "attempt": 1 } },
+      { "type": "failed", "state": "slow" }
+    ]
+  }
+}

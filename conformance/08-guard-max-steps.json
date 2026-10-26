@@ -1,0 +1,22 @@
+{
+  "name": "the maxSteps guard fails a looping run before the next step",
+  "rules": [5],
+  "machine": {
+    "initial": "loop",
+    "guards": { "maxSteps": 3 },
+    "states": { "loop": { "to": ["loop"], "do": [{ "count": "n" }], "then": "loop" } }
+  },
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "maxSteps",
+    "step": 3,
+    "ctx": { "n": 3 },
+    "events": [
+      { "type": "transition" },
+      { "type": "transition" },
+      { "type": "transition" },
+      { "type": "failed" }
+    ]
+  }
+}

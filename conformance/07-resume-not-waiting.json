@@ -1,0 +1,16 @@
+{
+  "name": "resuming a run that is not waiting is a no-op returning the current snapshot",
+  "rules": [4],
+  "machine": {
+    "initial": "only",
+    "states": { "only": { "do": [{ "count": "runs" }], "then": { "done": true } } }
+  },
+  "ctx": {},
+  "ops": [{ "resume": { "input": "ignored" }, "noop": true }],
+  "expect": {
+    "status": "done",
+    "ctx": { "runs": 1 },
+    "events": [{ "type": "done" }],
+    "snapshots": [{ "version": 1 }, { "version": 2, "status": "done" }]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "LLM usage is metered and the budgetUsd guard stops the run",
+  "rules": [5],
+  "machine": {
+    "initial": "think",
+    "guards": { "budgetUsd": 1 },
+    "states": {
+      "think": {
+        "to": ["think"],
+        "do": [{ "llm": "think harder", "as": "thought" }],
+        "then": "think"
+      }
+    }
+  },
+  "llm": [
+    { "text": "one", "tokens": 100, "costUsd": 0.5 },
+    { "text": "two", "tokens": 100, "costUsd": 0.5 },
+    { "text": "three", "tokens": 100, "costUsd": 0.5 }
+  ],
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "budgetUsd",
+    "step": 3,
+    "usage": { "tokens": 300, "costUsd": 1.5 },
+    "ctx": { "thought": "three" },
+    "llmCalls": 3
+  }
+}

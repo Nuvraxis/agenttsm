@@ -1,0 +1,10 @@
+{
+  "name": "an unknown transition target fails at definition time",
+  "rules": [8],
+  "machine": {
+    "initial": "a",
+    "states": { "a": { "to": ["missing"], "then": "missing" } }
+  },
+  "ctx": {},
+  "expect": { "defineError": "unknown state \"missing\"" }
+}

@@ -1,0 +1,46 @@
+{
+  "name": "a human wait parks the run and resume continues from the next state",
+  "rules": [1, 4, 6],
+  "machine": {
+    "initial": "draft",
+    "states": {
+      "draft": {
+        "to": ["publish"],
+        "do": [{ "count": "drafts" }],
+        "then": { "to": "publish", "wait": { "kind": "human", "prompt": "approve?" } }
+      },
+      "publish": {
+        "do": [{ "count": "publishes" }, { "copyInput": "approval" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "ctx": {},
+  "ops": [
+    {
+      "check": {
+        "status": "waiting",
+        "state": "publish",
+        "step": 1,
+        "waiting": { "kind": "human", "prompt": "approve?" }
+      }
+    },
+    { "resume": { "input": { "approved": true } } }
+  ],
+  "expect": {
+    "status": "done",
+    "state": "publish",
+    "ctx": {
+      "drafts": 1,
+      "publishes": 1,
+      "approval": { "approved": true },
+      "lastInput": { "approved": true }
+    },
+    "events": [
+      { "type": "transition", "state": "draft", "data": { "from": "draft", "to": "publish" } },
+      { "type": "wait", "state": "draft", "data": { "kind": "human" } },
+      { "type": "resume", "state": "publish", "data": { "input": { "approved": true } } },
+      { "type": "done", "state": "publish" }
+    ]
+  }
+}

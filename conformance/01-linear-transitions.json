@@ -1,0 +1,30 @@
+{
+  "name": "linear transitions save a snapshot after every step",
+  "rules": [1, 6],
+  "machine": {
+    "initial": "a",
+    "states": {
+      "a": { "to": ["b"], "do": [{ "count": "a" }], "then": "b" },
+      "b": { "to": ["c"], "do": [{ "count": "b" }], "then": { "to": "c" } },
+      "c": { "do": [{ "count": "c" }], "then": { "done": true } }
+    }
+  },
+  "ctx": {},
+  "expect": {
+    "status": "done",
+    "state": "c",
+    "step": 3,
+    "ctx": { "a": 1, "b": 1, "c": 1 },
+    "events": [
+      { "type": "transition", "state": "a", "data": { "from": "a", "to": "b" } },
+      { "type": "transition", "state": "b", "data": { "from": "b", "to": "c" } },
+      { "type": "done", "state": "c" }
+    ],
+    "snapshots": [
+      { "version": 1, "state": "a", "status": "running", "step": 0, "ctx": {} },
+      { "version": 2, "state": "b", "status": "running", "step": 1, "ctx": { "a": 1 } },
+      { "version": 3, "state": "c", "status": "running", "step": 2, "ctx": { "a": 1, "b": 1 } },
+      { "version": 4, "state": "c", "status": "done", "step": 3, "ctx": { "a": 1, "b": 1, "c": 1 } }
+    ]
+  }
+}

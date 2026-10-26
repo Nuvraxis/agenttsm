@@ -1,0 +1,28 @@
+{
+  "name": "route() retries once on an invalid answer and returns the chosen transition",
+  "rules": [6],
+  "machine": {
+    "initial": "triage",
+    "states": {
+      "triage": {
+        "to": ["billing", "support"],
+        "do": [{ "route": ["billing", "support"], "prompt": "Where does this ticket go?" }]
+      },
+      "billing": { "then": { "done": true } },
+      "support": { "then": { "done": true } }
+    }
+  },
+  "llm": [{ "text": "probably billing?" }, { "text": " Billing. " }],
+  "ctx": {},
+  "expect": {
+    "status": "done",
+    "state": "billing",
+    "llmCalls": 2,
+    "events": [
+      { "type": "route", "data": { "to": null, "attempt": 1 } },
+      { "type": "route", "data": { "to": "billing", "attempt": 2 } },
+      { "type": "transition", "data": { "from": "triage", "to": "billing" } },
+      { "type": "done", "state": "billing" }
+    ]
+  }
+}
