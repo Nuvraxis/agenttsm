@@ -1,0 +1,28 @@
+{
+  "name": "agenttsm-monorepo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.15.0",
+  "engines": {
+    "node": "26.12.1"
+  },
+  "volta": {
+    "node": "26.12.1",
+    "pnpm": "12.15.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@changesets/cli": "catalog:",
+    "turbo": "2.11.10",
+    "typescript": "catalog:"
+  }
+}
