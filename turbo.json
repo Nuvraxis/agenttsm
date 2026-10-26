@@ -17,7 +17,15 @@
     },
     "start": {
       "cache": false,
-      "passThroughEnv": ["LLM", "ANTHROPIC_API_KEY", "SERVE", "PORT"]
+      "passThroughEnv": [
+        "LLM",
+        "ANTHROPIC_API_KEY",
+        "SERVE",
+        "PORT",
+        "REQUESTER_TOKEN",
+        "REVIEWER_TOKEN",
+        "REFUND_API_TOKEN"
+      ]
     },
     "//#lint": {
       "inputs": ["$TURBO_DEFAULT$", "!plan.md", "!pnpm-lock.yaml"],

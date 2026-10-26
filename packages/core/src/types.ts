@@ -126,7 +126,17 @@ export interface MachineDef<C extends object, S extends string, T> {
   llm?: LLM;
 }
 
+export type HttpAccess<C extends object = object> =
+  | { action: "start"; ctx: C }
+  | { action: "get" | "resume"; runId: string; snapshot: Snapshot<C> | undefined };
+
+export type Authorize<C extends object = object> = (
+  request: Request,
+  access: HttpAccess<C>,
+) => boolean | Response | Promise<boolean | Response>;
+
 export interface HttpOptions<C extends object> {
+  authorize: Authorize<C>;
   parse?: (body: unknown) => C;
 }
 
@@ -154,6 +164,6 @@ export interface Machine<C extends object, T> {
   trace(runId: string): Promise<TraceEntry<C>[]>;
   on(type: EventType | "*", listener: Listener): () => void;
   toMermaid(): string;
-  http(options?: HttpOptions<C>): HttpHandlers;
+  http(options: HttpOptions<C>): HttpHandlers;
   test(ctx: C, options?: TestOptions<T>): Promise<TestResult<C>>;
 }
