@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  TURBO_TELEMETRY_DISABLED: 1
+
+jobs:
+  version:
+    name: Version Packages PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      has-changesets: ${{ steps.changesets.outputs.has-changesets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          version-script: pnpm changeset version
+          pr-title: Version Packages
+          commit-message: Version Packages
+          create-github-releases: false
+          push-git-tags: false
+
+  publish:
+    name: Publish to npm
+    needs: version
+    if: needs.version.outputs.has-changesets == 'false'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+        with:
+          registry-url: https://registry.npmjs.org
+
+      - name: Check whether this version is already on npm
+        id: check
+        run: |
+          version="$(node -p "require('./packages/core/package.json').version")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if npm view "@nuvraxis-org/agenttsm@${version}" version > /dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "@nuvraxis-org/agenttsm@${version} is already published."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and pack
+        if: steps.check.outputs.publish == 'true'
+        run: |
+          pnpm exec turbo run build --filter=@nuvraxis-org/agenttsm
+          pnpm --filter @nuvraxis-org/agenttsm pack --pack-destination "$RUNNER_TEMP"
+
+      - name: Publish with provenance
+        if: steps.check.outputs.publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: npm publish "$RUNNER_TEMP/nuvraxis-org-agenttsm-${VERSION}.tgz" --provenance --access public
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          awk -v heading="## ${VERSION}" '$0 == heading { found = 1; next } found && /^## / { exit } found { print }' \
+            packages/core/CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          gh release create "v${VERSION}" \
+            --target "$GITHUB_SHA" \
+            --title "v${VERSION}" \
+            --notes-file "$RUNNER_TEMP/notes.md"
