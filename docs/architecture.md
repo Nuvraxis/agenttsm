@@ -8,11 +8,11 @@ agenttsm is a step loop over a store. The loop is in
 
 ```mermaid
 flowchart TD
-  start(["start(ctx)"]) --> save0["save snapshot v1<br/>status: running"]
+  start(["start(ctx)"]) --> save0["save snapshot v1<br/>status: running, ctx.lastInput dropped"]
   resume(["resume(runId, input)"]) --> load["load snapshot"]
   load --> waiting{"status is<br/>waiting?"}
   waiting -- no --> noop(["return snapshot unchanged"])
-  waiting -- yes --> saveR["save snapshot<br/>status: running, ctx.lastInput = input<br/>(version check)"]
+  waiting -- yes --> saveR["save snapshot<br/>status: running, ctx.lastInput = input<br/>(removed when there is none)<br/>(version check)"]
   save0 --> guards
   saveR --> guards
   guards{"guards ok?<br/>maxSteps · maxTokens<br/>budgetUsd · deadlineMs"} -- no --> failG["save status: failed<br/>reason: guard breached"]
