@@ -1,8 +1,17 @@
 import type { HttpHandlers } from "@nuvraxis-org/agenttsm";
 import { defineMachine } from "@nuvraxis-org/agenttsm";
-import { pickLLM } from "examples-shared";
+import { bearerToken, pickLLM, sameSecret } from "examples-shared";
 
 export type Ctx = { orderId: string; reason: string; recommendation: string; decision: string };
+
+// Stand-in for a real session check: every route needs the staff token in REFUND_API_TOKEN,
+// and nothing is allowed while it is unset.
+function authorize(request: Request): boolean | Response {
+  const expected = process.env.REFUND_API_TOKEN;
+  const token = bearerToken(request);
+  if (!expected || !token) return Response.json({ error: "unauthorized" }, { status: 401 });
+  return sameSecret(token, expected);
+}
 
 async function create(): Promise<HttpHandlers> {
   const machine = defineMachine({
@@ -27,7 +36,7 @@ async function create(): Promise<HttpHandlers> {
       },
     },
   });
-  return machine.http();
+  return machine.http({ authorize });
 }
 
 const shared = globalThis as typeof globalThis & { agenttsmHandlers?: Promise<HttpHandlers> };

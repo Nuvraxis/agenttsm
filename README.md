@@ -86,7 +86,9 @@ const done = await machine.resume(paused.runId, "yes"); // input lands in ctx.la
 Wait kinds are `{ kind: "human" }`, `{ kind: "webhook", name }`, `{ kind: "until", at }` and
 `{ kind: "sleep", ms }`, and all of them resume through `resume()`. For `sleep` and `until`, the
 machine also schedules the resume itself while the process is running. Resuming a run that isn't
-waiting returns the current snapshot unchanged. When two `resume()` calls race on one run, one wins
+waiting returns the current snapshot unchanged. `ctx.lastInput` always holds the input of the
+latest resume: `start()` drops a `lastInput` passed in its ctx, and a resume without input,
+including a timed one, removes it. When two `resume()` calls race on one run, one wins
 and the other rejects with an `AgentTsmError` whose `code` is `"conflict"`.
 
 ## HTTP
@@ -94,14 +96,28 @@ and the other rejects with an `AgentTsmError` whose `code` is `"conflict"`.
 `machine.http()` returns framework-agnostic handlers over Web `Request` and `Response`:
 
 ```ts
-const http = machine.http();
+const http = machine.http({
+  authorize: async (request, access) => {
+    const user = await currentUser(request); // your session check
+    if (!user) return new Response(null, { status: 401 });
+    if (access.action === "start") return access.ctx.ownerId === user.id;
+    return access.snapshot?.ctx.ownerId === user.id;
+  },
+});
 http.start(request); // POST, body = ctx        -> 201 snapshot
 http.get(request, runId); // GET                     -> 200 snapshot | 404
 http.resume(request, runId); // POST, body = { input }  -> 200 snapshot | 404 | 409
 ```
 
+`authorize` is required, and the handlers check nothing else: anyone who reaches a route with a run
+ID could otherwise read or resume that run. It runs before the run is started, read or resumed, and
+receives `{ action: "start", ctx }` or `{ action: "get" | "resume", runId, snapshot }`. Return
+`true` to allow, `false` (or anything that isn't `true`) for `403`, or a `Response` to send as it
+is. Use `authorize: () => true` only for an endpoint anyone may call.
+
 If `runId` is omitted, it is read from the URL (`/runs/:id` or `/runs/:id/resume`). Pass
-`http({ parse })` to validate the start body. Adapters are one line per route; see
+`http({ authorize, parse })` to validate the start body. A `lastInput` in the start body is
+dropped; only `resume` sets it. Adapters are one line per route; see
 [Hono](examples/03-approval-gate/src/hono.ts) and
 [Next.js route handlers](examples/07-nextjs-route/app/api/runs).
 

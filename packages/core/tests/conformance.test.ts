@@ -80,7 +80,7 @@ function toState({
     async run(ctx, step) {
       for (const action of actions) {
         if ("count" in action) ctx[action.count] = Number(ctx[action.count] ?? 0) + 1;
-        else if ("copyInput" in action) ctx[action.copyInput] = ctx.lastInput;
+        else if ("copyInput" in action) ctx[action.copyInput] = ctx.lastInput ?? null;
         else if ("emit" in action) step.emit(action.emit, action.data);
         else if ("delay" in action)
           await new Promise((resolve) => setTimeout(resolve, action.delay));
@@ -136,7 +136,7 @@ async function apply(
 describe("conformance", () => {
   it("covers every runtime rule", () => {
     const covered = new Set(scenarios.flatMap((s) => s.rules));
-    expect([...covered].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 8, 9]);
+    expect([...covered].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 8, 9, 10]);
   });
 
   it.each(scenarios)("$file: $name", async (scenario) => {

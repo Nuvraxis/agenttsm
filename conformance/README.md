@@ -47,7 +47,7 @@ The format uses plain JSON values and no TypeScript-specific features.
 | Action                                   | Effect                                                           |
 | ---------------------------------------- | ---------------------------------------------------------------- |
 | `{ "count": "k" }`                       | `ctx.k = (ctx.k ?? 0) + 1`                                       |
-| `{ "copyInput": "k" }`                   | `ctx.k = ctx.lastInput`                                          |
+| `{ "copyInput": "k" }`                   | `ctx.k = ctx.lastInput`, or `null` when there is none            |
 | `{ "tool": "name", "as": "k" }`          | `ctx.k = await tools.name(ctx)`                                  |
 | `{ "llm": "prompt", "as": "k" }`         | `ctx.k = (await step.llm.complete({ prompt })).text`             |
 | `{ "emit": "type", "data": x }`          | `step.emit(type, data)`                                          |
@@ -101,6 +101,7 @@ value; extra keys in the actual value are ignored. Arrays must have the same len
 | 7. Zero runtime dependencies                            | checked by `packages/core/tests/smoke.test.ts` |
 | 8. Unknown targets fail at definition time              | 10                                             |
 | 9. Optimistic concurrency on resume                     | 11                                             |
+| 10. Only the latest resume sets `ctx.lastInput`         | 14                                             |
 
 ## Adding a scenario
 

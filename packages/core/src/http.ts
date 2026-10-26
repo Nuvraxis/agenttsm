@@ -1,5 +1,5 @@
 import { AgentTsmError } from "./errors.ts";
-import type { HttpHandlers, HttpOptions, Machine } from "./types.ts";
+import type { HttpAccess, HttpHandlers, HttpOptions, Machine } from "./types.ts";
 
 type Body = { ok: true; value: unknown } | { ok: false; response: Response };
 
@@ -30,8 +30,23 @@ function defaultParse<C extends object>(body: unknown): C {
 
 export function httpHandlers<C extends object>(
   machine: Pick<Machine<C, unknown>, "start" | "get" | "resume">,
-  { parse = defaultParse }: HttpOptions<C> = {},
+  options: HttpOptions<C>,
 ): HttpHandlers {
+  const authorize = options?.authorize;
+  const parse = options?.parse ?? defaultParse;
+  if (typeof authorize !== "function") {
+    throw new AgentTsmError(
+      "definition",
+      "http() needs an authorize function; use () => true only for an endpoint anyone may call",
+    );
+  }
+
+  async function refuse(request: Request, access: HttpAccess<C>): Promise<Response | undefined> {
+    const verdict = await authorize(request, access);
+    if (verdict instanceof Response) return verdict;
+    return verdict === true ? undefined : json({ error: "forbidden" }, 403);
+  }
+
   return {
     async start(request) {
       const body = await read(request);
@@ -42,15 +57,22 @@ export function httpHandlers<C extends object>(
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 400);
       }
+      const refusal = await refuse(request, { action: "start", ctx });
+      if (refusal) return refusal;
       return json(await machine.start(ctx), 201);
     },
 
     async get(request, runId = runIdOf(request)) {
       const snapshot = await machine.get(runId);
+      const refusal = await refuse(request, { action: "get", runId, snapshot });
+      if (refusal) return refusal;
       return snapshot ? json(snapshot) : json({ error: `run "${runId}" not found` }, 404);
     },
 
     async resume(request, runId = runIdOf(request)) {
+      const snapshot = await machine.get(runId);
+      const refusal = await refuse(request, { action: "resume", runId, snapshot });
+      if (refusal) return refusal;
       const body = await read(request);
       if (!body.ok) return body.response;
       try {

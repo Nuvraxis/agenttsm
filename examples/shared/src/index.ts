@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { LLM } from "@nuvraxis-org/agenttsm";
 import type { FakeAnswer } from "@nuvraxis-org/agenttsm/testing";
 import { FakeLLM } from "@nuvraxis-org/agenttsm/testing";
@@ -44,4 +45,15 @@ export async function anthropicLLM(): Promise<LLM> {
 
 export function pickLLM(script: readonly FakeAnswer[]): Promise<LLM> {
   return process.env.LLM === "anthropic" ? anthropicLLM() : Promise.resolve(new FakeLLM(script));
+}
+
+export function bearerToken(request: Request): string | undefined {
+  const [scheme, token] = request.headers.get("authorization")?.split(" ") ?? [];
+  return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
+}
+
+export function sameSecret(given: string, expected: string): boolean {
+  const a = Buffer.from(given);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
 }

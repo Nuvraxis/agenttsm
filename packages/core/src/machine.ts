@@ -50,6 +50,13 @@ function resolveNext(name: string, state: Shape, transition: t.Transition): Next
   return state.to?.includes(next.to) ? next : `state "${name}" cannot transition to "${next.to}"`;
 }
 
+function withInput<C extends object>(ctx: t.RunCtx<C>, input: unknown): t.RunCtx<C> {
+  const next = { ...ctx };
+  if (input === undefined) delete next.lastInput;
+  else next.lastInput = input;
+  return next;
+}
+
 function breach({ step, usage, createdAt }: t.Snapshot, guards: t.Guards = {}): string | undefined {
   const measured: [keyof t.Guards, number][] = [
     ["maxSteps", step + 1],
@@ -207,7 +214,7 @@ function build<C extends object, S extends string, T>(
     if (!snap) throw new AgentTsmError("not_found", `run "${runId}" not found`);
     if (snap.status !== "waiting" || (version ?? snap.version) !== snap.version) return snap;
     const { waiting, ...rest } = snap;
-    const ctx = input === undefined ? rest.ctx : { ...rest.ctx, lastInput: input };
+    const ctx = withInput(rest.ctx, input);
     const data = { wait: waiting, ...(input === undefined ? {} : { input }) };
     return drive(await commit({ ...rest, ctx, status: "running" }, [event(snap, "resume", data)]));
   }
@@ -220,7 +227,7 @@ function build<C extends object, S extends string, T>(
         version: 0,
         state: def.initial,
         status: "running",
-        ctx: structuredClone(ctx),
+        ctx: withInput(structuredClone(ctx), undefined),
         step: 0,
         attempt: 0,
         usage: { tokens: 0, costUsd: 0 },
