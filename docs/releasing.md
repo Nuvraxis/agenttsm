@@ -20,6 +20,9 @@ provenance statement, while `NPM_TOKEN` authenticates the publish.
    4. creates the GitHub Release `vX.Y.Z`, using that version's section of the changelog as the
       notes.
 
+`release.yaml` runs only for pushes to `main` that change `packages/**` or `.changeset/**`. Merges
+that touch only examples, docs, CI or dependencies of the examples don't start it.
+
 Examples are private workspace packages. Changesets neither versions nor tags them
 (`privatePackages` in `.changeset/config.json`).
 
