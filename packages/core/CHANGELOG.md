@@ -1,5 +1,12 @@
 # @nuvraxis-org/agenttsm
 
+## 0.3.0
+
+### Minor Changes
+
+- 8067a3a: Add `step.llm.completeJson({ prompt, system?, parse })`. It calls the model, parses the reply as JSON (accepting a surrounding ```` ```json ```` fence) and runs `parse`, which can be any `(value: unknown) => T` such as a valibot or zod schema. Output that isn't JSON or that `parse` rejects throws `AgentTsmError` with the new code `"invalid_output"`, so the state's `maxRetries` retries it. `AgentTsmError` now accepts an `ErrorOptions` argument and carries the original error as `cause`.
+- a509e42: Add `machine.poll()`, which resumes every `sleep` and `until` wait in the store that is due and returns the resumed snapshots. Call it from a cron job or an interval so timed waits come back after a restart or on serverless hosts. Concurrent pollers are safe: the version check lets one of them resume each run. A new `timers: false` option on `defineMachine` turns off the in-process timers for deployments that rely on `poll()` alone.
+
 ## 0.2.0
 
 ### Minor Changes
