@@ -56,40 +56,42 @@ jobs:
         with:
           registry-url: https://registry.npmjs.org
 
-      - name: Check whether this version is already on npm
-        id: check
-        run: |
-          version="$(node -p "require('./packages/core/package.json').version")"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          if npm view "@nuvraxis-org/agenttsm@${version}" version > /dev/null 2>&1; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "@nuvraxis-org/agenttsm@${version} is already published."
-          else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Build the packages
+        run: pnpm exec turbo run build --filter='./packages/*'
 
-      - name: Build and pack
-        if: steps.check.outputs.publish == 'true'
-        run: |
-          pnpm exec turbo run build --filter=@nuvraxis-org/agenttsm
-          pnpm --filter @nuvraxis-org/agenttsm pack --pack-destination "$RUNNER_TEMP"
-
-      - name: Publish with provenance
-        if: steps.check.outputs.publish == 'true'
+      - name: Publish new versions and create GitHub Releases
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          VERSION: ${{ steps.check.outputs.version }}
-        run: npm publish "$RUNNER_TEMP/nuvraxis-org-agenttsm-${VERSION}.tgz" --provenance --access public
-
-      - name: Create GitHub Release
-        if: steps.check.outputs.publish == 'true'
-        env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.check.outputs.version }}
         run: |
-          awk -v heading="## ${VERSION}" '$0 == heading { found = 1; next } found && /^## / { exit } found { print }' \
-            packages/core/CHANGELOG.md > "$RUNNER_TEMP/notes.md"
-          gh release create "v${VERSION}" \
-            --target "$GITHUB_SHA" \
-            --title "v${VERSION}" \
-            --notes-file "$RUNNER_TEMP/notes.md"
+          for dir in packages/*/; do
+            manifest="./${dir}package.json"
+            if [ "$(node -p "Boolean(require('${manifest}').private)")" = "true" ]; then
+              continue
+            fi
+            name="$(node -p "require('${manifest}').name")"
+            version="$(node -p "require('${manifest}').version")"
+            if npm view "${name}@${version}" version > /dev/null 2>&1; then
+              echo "${name}@${version} is already published."
+              continue
+            fi
+
+            # pnpm pack rewrites catalog: and workspace: specifiers to real versions.
+            out="${RUNNER_TEMP}/pack/${dir}"
+            mkdir -p "${out}"
+            pnpm --filter "${name}" pack --pack-destination "${out}"
+            npm publish "${out}"*.tgz --provenance --access public
+
+            # The core package keeps its vX.Y.Z tags; the others are tagged <name>@X.Y.Z.
+            if [ "${name}" = "@nuvraxis-org/agenttsm" ]; then
+              tag="v${version}"
+            else
+              tag="${name}@${version}"
+            fi
+            awk -v heading="## ${version}" '$0 == heading { found = 1; next } found && /^## / { exit } found { print }' \
+              "${dir}CHANGELOG.md" > "${out}notes.md"
+            gh release create "${tag}" \
+              --target "$GITHUB_SHA" \
+              --title "${tag}" \
+              --notes-file "${out}notes.md"
+          done

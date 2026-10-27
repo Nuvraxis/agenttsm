@@ -1,24 +1,34 @@
 # Releasing
 
-`@nuvraxis-org/agenttsm` is versioned with [Changesets](https://github.com/changesets/changesets) and
-published from GitHub Actions with an npm granular access token, stored as the `NPM_TOKEN` secret
+The published packages, `@nuvraxis-org/agenttsm` (`packages/core`) and
+`@nuvraxis-org/agenttsm-store-postgres` (`packages/store-postgres`), are versioned with
+[Changesets](https://github.com/changesets/changesets) and published from GitHub Actions with an npm granular access token, stored as the `NPM_TOKEN` secret
 of the `npm` environment. Releases still carry npm provenance: the job's OIDC token signs the
 provenance statement, while `NPM_TOKEN` authenticates the publish.
 
 ## Day to day
 
-1. In a PR that changes the published package, run `pnpm changeset`, pick the bump, and write one
-   line for the changelog. Commit the generated `.changeset/*.md` with the PR.
+1. In a PR that changes a published package, run `pnpm changeset`, pick the packages and the bump,
+   and write one line for the changelog. Commit the generated `.changeset/*.md` with the PR.
 2. When it merges to `main`, `release.yaml` opens or updates a **Version Packages** PR. That PR
-   bumps `packages/core/package.json`, writes `packages/core/CHANGELOG.md`, and deletes the
+   bumps each released package's `package.json`, writes its `CHANGELOG.md`, and deletes the
    consumed changesets.
 3. Merging the Version Packages PR runs `release.yaml` again. With no changesets left, the
    `publish` job:
-   1. skips everything if that version is already on npm;
-   2. builds the package and packs it with `pnpm pack`, which rewrites `catalog:` specifiers;
-   3. runs `npm publish <tarball> --provenance --access public`, authenticated with `NPM_TOKEN`;
-   4. creates the GitHub Release `vX.Y.Z`, using that version's section of the changelog as the
-      notes.
+   1. builds every package under `packages/`;
+   2. for each package that isn't private, skips it if that version is already on npm;
+   3. otherwise packs it with `pnpm pack`, which rewrites `catalog:` and `workspace:` specifiers,
+      and runs `npm publish <tarball> --provenance --access public`, authenticated with `NPM_TOKEN`;
+   4. creates a GitHub Release with that version's section of the package's changelog as the
+      notes. The core package is tagged `vX.Y.Z`, as before; other packages are tagged
+      `<name>@X.Y.Z`, for example `@nuvraxis-org/agenttsm-store-postgres@0.1.0`.
+
+   A new package under `packages/` is published by the same loop. The npm token covers the whole
+   `@nuvraxis-org` scope, so it needs no extra setup.
+
+`@nuvraxis-org/agenttsm-store-postgres` lists core as a peer dependency with a plain range
+(`>=0.2.0 <1`), not `workspace:`, so a core release doesn't force a release of the store. Widen
+the range when core reaches 1.0.
 
 `release.yaml` runs only for pushes to `main` that change `packages/**` or `.changeset/**`. Merges
 that touch only examples, docs, CI or dependencies of the examples don't start it.
@@ -97,7 +107,9 @@ cooldown, and updates the SHA and the comment together. npm packages also wait o
   published is not published twice.
 - **`E401`, `E403` or `ENEEDAUTH` on publish:** `NPM_TOKEN` has expired, been revoked, or lacks
   write access to `@nuvraxis-org`. Rotate it (see above) and re-run the `publish` job.
-- **Release missing:** if npm has the version but GitHub has no `vX.Y.Z` release, create it with
-  `gh release create vX.Y.Z --target <merge commit> --notes-file <changelog section>`.
+- **Release missing:** if npm has the version but GitHub has no release for it, create it with
+  `gh release create <tag> --target <merge commit> --notes-file <changelog section>`, using the
+  tag scheme above. A re-run of the job skips packages that are already on npm, so it won't
+  create the missing release for you.
 - **Wrong version published:** npm versions are immutable. Deprecate it with
   `npm deprecate @nuvraxis-org/agenttsm@X.Y.Z "<reason>"` and release a fix through a new changeset.
