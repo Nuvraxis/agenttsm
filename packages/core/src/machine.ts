@@ -58,6 +58,12 @@ function withInput<C extends object>(ctx: t.RunCtx<C>, input: unknown): t.RunCtx
   return next;
 }
 
+function dueAt({ waiting, updatedAt }: t.Snapshot): number | undefined {
+  if (waiting?.kind === "sleep") return Date.parse(updatedAt) + waiting.ms;
+  if (waiting?.kind === "until") return Date.parse(waiting.at);
+  return undefined;
+}
+
 function breach({ step, usage, createdAt }: t.Snapshot, guards: t.Guards = {}): string | undefined {
   const measured: [keyof t.Guards, number][] = [
     ["maxSteps", step + 1],
@@ -78,7 +84,7 @@ export function defineMachine<
   T = Record<never, never>,
 >(def: t.MachineDef<C, S, T>): t.Machine<C, T> {
   validate(def.initial, def.states);
-  return build(def, true);
+  return build(def, def.timers ?? true);
 }
 
 function build<C extends object, S extends string, T>(
@@ -195,9 +201,8 @@ function build<C extends object, S extends string, T>(
   }
 
   function schedule(snap: Snap): void {
-    const wait = snap.waiting;
-    if (!timers || (wait?.kind !== "sleep" && wait?.kind !== "until")) return;
-    const due = wait.kind === "sleep" ? Date.parse(snap.updatedAt) + wait.ms : Date.parse(wait.at);
+    const due = dueAt(snap);
+    if (!timers || due === undefined) return;
     const fire = (): void => {
       if (Date.now() < due) {
         schedule(snap);
@@ -217,6 +222,10 @@ function build<C extends object, S extends string, T>(
     const snap = await get(runId);
     if (!snap) throw new AgentTsmError("not_found", `run "${runId}" not found`);
     if (snap.status !== "waiting" || (version ?? snap.version) !== snap.version) return snap;
+    return wake(snap, input);
+  }
+
+  async function wake(snap: Snap, input?: unknown): Promise<Snap> {
     const { waiting, ...rest } = snap;
     const ctx = withInput(rest.ctx, input);
     const data = { wait: waiting, ...(input === undefined ? {} : { input }) };
@@ -241,6 +250,20 @@ function build<C extends object, S extends string, T>(
       return drive(await commit(snap, []));
     },
     resume: (runId, input) => resume(runId, input),
+    async poll() {
+      const at = Date.now();
+      const resumed: Snap[] = [];
+      for (const snap of (await store.list({ status: "waiting" })) as Snap[]) {
+        const due = dueAt(snap);
+        if (due === undefined || due > at) continue;
+        try {
+          resumed.push(await wake(snap));
+        } catch (error) {
+          if (!(error instanceof AgentTsmError && error.code === "conflict")) throw error;
+        }
+      }
+      return resumed;
+    },
     get,
     trace: async (runId) => (await store.trace(runId)) as t.TraceEntry<C>[],
     on(type, listener) {

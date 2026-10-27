@@ -52,7 +52,7 @@ target is a compile error, and `defineMachine()` rejects unknown targets at runt
 | Snapshot   | `{ runId, version, state, status, ctx, step, attempt, waiting?, reason?, usage, createdAt, updatedAt }`, where `status` is `running`, `waiting`, `done` or `failed` |
 | Store      | `save(snapshot, events)`, `load(runId)`, `list(filter?)`, `trace(runId)`; `MemoryStore` is the default                                                              |
 | Guards     | `maxSteps`, `maxTokens`, `budgetUsd`, `deadlineMs`, checked before every step                                                                                       |
-| Machine    | `start`, `resume`, `get`, `trace`, `on`, `toMermaid`, `http`, `test`                                                                                                |
+| Machine    | `start`, `resume`, `poll`, `get`, `trace`, `on`, `toMermaid`, `http`, `test`                                                                                        |
 
 The `step` argument gives a handler `signal` (aborted on timeout), `attempt`, `emit(type, data)`,
 `tools` and `llm` from `defineMachine`, and `route(allowed, prompt)`.
@@ -118,6 +118,22 @@ waiting returns the current snapshot unchanged. `ctx.lastInput` always holds the
 latest resume: `start()` drops a `lastInput` passed in its ctx, and a resume without input,
 including a timed one, removes it. When two `resume()` calls race on one run, one wins
 and the other rejects with an `AgentTsmError` whose `code` is `"conflict"`.
+
+### Timed waits after a restart
+
+In-process timers only exist while the process that started the wait is alive. After a restart, or
+on serverless hosts, call `machine.poll()` from a cron job or an interval. It lists the store's
+waiting runs, resumes every `sleep` and `until` wait that is due, and returns the resumed
+snapshots. Pollers on several instances can run at once: the version check lets one of them resume
+each run, and the others skip it. Pass `timers: false` to `defineMachine` to rely on `poll()` alone.
+
+```ts
+const machine = defineMachine({ ...def, store, timers: false });
+setInterval(() => machine.poll().catch(console.error), 30_000);
+```
+
+`poll()` resumes every due run in the store with this machine's states, so give each machine its
+own store (for `PostgresStore`, its own `table`).
 
 ## HTTP
 

@@ -1,0 +1,40 @@
+{
+  "name": "poll() resumes due sleep and until waits from the store after a restart, and only those",
+  "rules": [12],
+  "machine": {
+    "initial": "a",
+    "timers": false,
+    "states": {
+      "a": {
+        "to": ["b"],
+        "then": { "to": "b", "wait": { "kind": "until", "at": "2000-01-01T00:00:00.000Z" } }
+      },
+      "b": {
+        "to": ["c"],
+        "do": [{ "count": "woken" }],
+        "then": { "to": "c", "wait": { "kind": "sleep", "ms": 3600000 } }
+      },
+      "c": { "then": { "done": true } }
+    }
+  },
+  "ctx": {},
+  "ops": [
+    { "check": { "status": "waiting", "state": "b", "waiting": { "kind": "until" } } },
+    { "restart": true },
+    { "poll": { "resumed": 1 } },
+    { "check": { "status": "waiting", "state": "c", "ctx": { "woken": 1 } } },
+    { "poll": { "resumed": 0 } }
+  ],
+  "expect": {
+    "status": "waiting",
+    "state": "c",
+    "waiting": { "kind": "sleep", "ms": 3600000 },
+    "events": [
+      { "type": "transition", "data": { "from": "a", "to": "b" } },
+      { "type": "wait", "data": { "kind": "until" } },
+      { "type": "resume", "state": "b", "data": { "wait": { "kind": "until" } } },
+      { "type": "transition", "data": { "from": "b", "to": "c" } },
+      { "type": "wait", "data": { "kind": "sleep" } }
+    ]
+  }
+}

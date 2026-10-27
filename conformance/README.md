@@ -2,7 +2,7 @@
 
 Each `*.json` file in this folder describes one machine, scripted LLM and tool answers, a list of
 operations, and the result every agenttsm implementation must produce. The TypeScript runner is
-[`packages/core/tests/conformance.test.ts`](../packages/core/tests/conformance.test.ts). A port to
+[`packages/core/tests/conformance.ts`](../packages/core/tests/conformance.ts). A port to
 another language passes when its runner gets the same results from the same files.
 
 The format uses plain JSON values and no TypeScript-specific features.
@@ -17,6 +17,7 @@ The format uses plain JSON values and no TypeScript-specific features.
     "initial": "a",
     "guards": { "maxSteps": 3 }, // optional: maxSteps, maxTokens, budgetUsd, deadlineMs
     "retry": { "baseMs": 0, "maxMs": 0 }, // optional backoff policy
+    "timers": false, // optional: no in-process timers for sleep/until waits (default true)
     "states": {
       "a": {
         "to": ["b"], // declared targets
@@ -73,6 +74,8 @@ The format uses plain JSON values and no TypeScript-specific features.
 | `{ "waitFor": { ...partial snapshot } }`                               | Poll `get(runId)` until it matches; timed waits resume themselves.                       |
 | `{ "resume": { "input": x } }`                                         | `resume(runId, x)`. Add `"noop": true` to assert the result equals the current snapshot. |
 | `{ "resumeConcurrently": { "count": n, "input": x }, "conflicts": c }` | Start `n` resumes at once; exactly `c` reject with a `conflict` error.                   |
+| `{ "restart": true }`                                                  | Define the machine again on the same store, as a new process would, and reload the run.  |
+| `{ "poll": { "resumed": n } }`                                         | `poll()` resumes exactly `n` runs; then reload the run.                                  |
 
 ### Expectations (`expect`)
 
@@ -104,6 +107,7 @@ value; extra keys in the actual value are ignored. Arrays must have the same len
 | 9. Optimistic concurrency on resume                                                                        | 11                                             |
 | 10. Only the latest resume sets `ctx.lastInput`                                                            | 14                                             |
 | 11. `completeJson` output that is not JSON, or that `parse` rejects, is a retryable `invalid_output` error | 15, 16                                         |
+| 12. `poll()` resumes due `sleep` and `until` waits from the store, including after a restart               | 17                                             |
 
 ## Adding a scenario
 
