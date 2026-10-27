@@ -1,0 +1,69 @@
+{
+  "name": "@nuvraxis-org/agenttsm-store-postgres",
+  "version": "0.0.0",
+  "description": "PostgreSQL Store for @nuvraxis-org/agenttsm: atomic, version-checked snapshots and traces.",
+  "keywords": [
+    "state-machine",
+    "agents",
+    "llm",
+    "workflow",
+    "postgres",
+    "postgresql",
+    "store"
+  ],
+  "homepage": "https://github.com/Nuvraxis/agenttsm/tree/main/packages/store-postgres#readme",
+  "bugs": {
+    "url": "https://github.com/Nuvraxis/agenttsm/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nuvraxis/agenttsm.git",
+    "directory": "packages/store-postgres"
+  },
+  "license": "MIT",
+  "author": "Sajankumar Vijayan",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=26"
+  },
+  "exports": {
+    ".": {
+      "@nuvraxis-org/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc && tsc -p tests",
+    "test": "vitest run --coverage"
+  },
+  "peerDependencies": {
+    "@nuvraxis-org/agenttsm": ">=0.2.0 <1",
+    "pg": "^8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@nuvraxis-org/agenttsm": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "pg": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

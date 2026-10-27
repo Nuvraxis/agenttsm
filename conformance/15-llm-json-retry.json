@@ -1,0 +1,33 @@
+{
+  "name": "completeJson output that is not JSON or fails parse is retried; a json fence is accepted",
+  "rules": [2, 11],
+  "machine": {
+    "initial": "extract",
+    "retry": { "baseMs": 0, "maxMs": 0 },
+    "states": {
+      "extract": {
+        "maxRetries": 2,
+        "do": [{ "llmJson": "extract the order", "as": "order" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "llm": [
+    { "text": "Sure! Here is the order." },
+    { "text": "[1, 2]", "tokens": 5 },
+    { "text": "```json\n{ \"id\": \"A-1\", \"qty\": 2 }\n```", "tokens": 7 }
+  ],
+  "ctx": {},
+  "expect": {
+    "status": "done",
+    "attempt": 0,
+    "ctx": { "order": { "id": "A-1", "qty": 2 } },
+    "usage": { "tokens": 12 },
+    "llmCalls": 3,
+    "events": [
+      { "type": "retry", "state": "extract", "data": { "attempt": 1 } },
+      { "type": "retry", "state": "extract", "data": { "attempt": 2 } },
+      { "type": "done", "state": "extract" }
+    ]
+  }
+}

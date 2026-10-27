@@ -31,6 +31,23 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        # Same image and digest as compose.yaml.
+        image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: agenttsm
+          POSTGRES_PASSWORD: agenttsm
+          POSTGRES_DB: agenttsm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agenttsm -d agenttsm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://agenttsm:agenttsm@localhost:5432/agenttsm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,12 +62,30 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        # Same image and digest as compose.yaml.
+        image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+        env:
+          POSTGRES_USER: agenttsm
+          POSTGRES_PASSWORD: agenttsm
+          POSTGRES_DB: agenttsm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agenttsm -d agenttsm"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://agenttsm:agenttsm@localhost:5432/agenttsm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
       - run: pnpm --filter @nuvraxis-org/agenttsm exec vitest run tests/conformance.test.ts
+      - run: pnpm --filter @nuvraxis-org/agenttsm-store-postgres exec vitest run tests/conformance.test.ts
 
   examples:
     name: Examples smoke

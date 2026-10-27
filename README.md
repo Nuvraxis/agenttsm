@@ -45,17 +45,45 @@ target is a compile error, and `defineMachine()` rejects unknown targets at runt
 
 ## Concepts
 
-| Concept    | Shape                                                                                                                                                               |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| State      | `{ run(ctx, step) => Transition, to?, final?, maxRetries?, timeoutMs? }`                                                                                            |
-| Transition | `"name"` · `{ to }` · `{ to, wait }` · `{ done: true }`                                                                                                             |
-| Snapshot   | `{ runId, version, state, status, ctx, step, attempt, waiting?, reason?, usage, createdAt, updatedAt }`, where `status` is `running`, `waiting`, `done` or `failed` |
-| Store      | `save(snapshot, events)`, `load(runId)`, `list(filter?)`, `trace(runId)`; `MemoryStore` is the default                                                              |
-| Guards     | `maxSteps`, `maxTokens`, `budgetUsd`, `deadlineMs`, checked before every step                                                                                       |
-| Machine    | `start`, `resume`, `get`, `trace`, `on`, `toMermaid`, `http`, `test`                                                                                                |
+| Concept    | Shape                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| State      | `{ run(ctx, step) => Transition, to?, final?, maxRetries?, timeoutMs? }`                                                                                                                         |
+| Transition | `"name"` · `{ to }` · `{ to, wait }` · `{ done: true }`                                                                                                                                          |
+| Snapshot   | `{ runId, version, state, status, ctx, step, attempt, waiting?, reason?, usage, createdAt, updatedAt }`, where `status` is `running`, `waiting`, `done` or `failed`                              |
+| Store      | `save(snapshot, events)`, `load(runId)`, `list(filter?)`, `trace(runId)`; `MemoryStore` is the default, `PostgresStore` is in [`@nuvraxis-org/agenttsm-store-postgres`](packages/store-postgres) |
+| Guards     | `maxSteps`, `maxTokens`, `budgetUsd`, `deadlineMs`, checked before every step                                                                                                                    |
+| Machine    | `start`, `resume`, `poll`, `get`, `trace`, `on`, `toMermaid`, `http`, `test`                                                                                                                     |
 
 The `step` argument gives a handler `signal` (aborted on timeout), `attempt`, `emit(type, data)`,
 `tools` and `llm` from `defineMachine`, and `route(allowed, prompt)`.
+
+## Structured output
+
+`step.llm.completeJson({ prompt, system?, parse })` calls the model, parses the text as JSON (a
+surrounding ` ```json ` fence is accepted) and passes the value to `parse`. `parse` is any
+`(value: unknown) => T` that throws on bad input, so valibot, zod or a hand-written check all work
+without core depending on them:
+
+```ts
+import * as v from "valibot";
+
+const Order = v.object({ id: v.string(), qty: v.number() });
+
+extract: {
+  maxRetries: 2,
+  run: async (ctx, step) => {
+    ctx.order = await step.llm.completeJson({
+      prompt: `Extract the order from: ${ctx.email}`,
+      parse: (value) => v.parse(Order, value),
+    });
+    return "confirm";
+  },
+},
+```
+
+Output that isn't JSON, or that `parse` rejects, throws an `AgentTsmError` with code
+`"invalid_output"` (the original error is its `cause`). Like any other error in a handler, it is
+retried up to the state's `maxRetries`, and tokens from every attempt count toward the guards.
 
 ## Pause and resume
 
@@ -90,6 +118,22 @@ waiting returns the current snapshot unchanged. `ctx.lastInput` always holds the
 latest resume: `start()` drops a `lastInput` passed in its ctx, and a resume without input,
 including a timed one, removes it. When two `resume()` calls race on one run, one wins
 and the other rejects with an `AgentTsmError` whose `code` is `"conflict"`.
+
+### Timed waits after a restart
+
+In-process timers only exist while the process that started the wait is alive. After a restart, or
+on serverless hosts, call `machine.poll()` from a cron job or an interval. It lists the store's
+waiting runs, resumes every `sleep` and `until` wait that is due, and returns the resumed
+snapshots. Pollers on several instances can run at once: the version check lets one of them resume
+each run, and the others skip it. Pass `timers: false` to `defineMachine` to rely on `poll()` alone.
+
+```ts
+const machine = defineMachine({ ...def, store, timers: false });
+setInterval(() => machine.poll().catch(console.error), 30_000);
+```
+
+`poll()` resumes every due run in the store with this machine's states, so give each machine its
+own store (for `PostgresStore`, its own `table`).
 
 ## HTTP
 
@@ -175,18 +219,23 @@ for structured logs and OpenTelemetry spans.
 
 ## Repository
 
-| Path                                           | Contents                                              |
-| ---------------------------------------------- | ----------------------------------------------------- |
-| [`packages/core`](packages/core)               | `@nuvraxis-org/agenttsm` source and tests             |
-| [`conformance`](conformance)                   | JSON scenarios every implementation must pass         |
-| [`examples`](examples)                         | eight runnable examples: `pnpm --filter <name> start` |
-| [`docs/architecture.md`](docs/architecture.md) | runtime loop and design notes                         |
-| [`docs/releasing.md`](docs/releasing.md)       | versioning and publishing                             |
+| Path                                                 | Contents                                                 |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| [`packages/core`](packages/core)                     | `@nuvraxis-org/agenttsm` source and tests                |
+| [`packages/store-postgres`](packages/store-postgres) | `@nuvraxis-org/agenttsm-store-postgres`: `PostgresStore` |
+| [`compose.yaml`](compose.yaml)                       | local Postgres 17 for the store's tests                  |
+| [`conformance`](conformance)                         | JSON scenarios every implementation must pass            |
+| [`examples`](examples)                               | eight runnable examples: `pnpm --filter <name> start`    |
+| [`docs/architecture.md`](docs/architecture.md)       | runtime loop and design notes                            |
+| [`docs/releasing.md`](docs/releasing.md)             | versioning and publishing                                |
 
 ```sh
 pnpm install
 pnpm turbo build test lint typecheck
 ```
+
+The `PostgresStore` tests need a database: `docker compose up -d --wait`, then run the tests with
+`DATABASE_URL=postgres://agenttsm:agenttsm@127.0.0.1:5432/agenttsm`. Without it they are skipped.
 
 ## License
 

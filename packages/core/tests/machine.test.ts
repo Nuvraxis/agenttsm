@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Guards, MachineDef, RunEvent } from "../src/index.ts";
-import { AgentTsmError, defineMachine } from "../src/index.ts";
+import type { Guards, MachineDef, RunEvent, Wait } from "../src/index.ts";
+import { AgentTsmError, defineMachine, MemoryStore } from "../src/index.ts";
 import { FakeLLM } from "../src/testing/index.ts";
 
 type Ctx = { n: number };
@@ -239,6 +239,67 @@ describe("waits", () => {
     await vi.waitFor(() =>
       expect(error).toHaveBeenCalledWith("agenttsm: scheduled resume failed", expect.any(Error)),
     );
+  });
+});
+
+describe("poll()", () => {
+  const timed = (wait: Wait) =>
+    ({
+      initial: "a",
+      timers: false,
+      states: {
+        a: { to: ["b"], run: () => ({ to: "b", wait }) as const },
+        b: { run: () => ({ done: true }) as const },
+      },
+    }) as const;
+
+  it("resumes only due sleep and until waits", async () => {
+    const store = new MemoryStore();
+    const past = new Date(Date.now() - 1_000).toISOString();
+    const future = new Date(Date.now() + 60_000).toISOString();
+    const runs = await Promise.all(
+      [
+        { kind: "sleep", ms: 0 },
+        { kind: "until", at: past },
+        { kind: "sleep", ms: 60_000 },
+        { kind: "until", at: future },
+        { kind: "human" },
+        { kind: "webhook", name: "paid" },
+      ].map((wait) => defineMachine({ ...timed(wait as Wait), store }).start({})),
+    );
+    const resumed = await defineMachine({ ...timed({ kind: "human" }), store }).poll();
+    expect(resumed.map((s) => s.runId).sort()).toEqual([runs[0]?.runId, runs[1]?.runId].sort());
+    expect(resumed.every((s) => s.status === "done")).toBe(true);
+    expect(await store.list({ status: "waiting" })).toHaveLength(4);
+  });
+
+  it("resumes a run once when several pollers race on one store", async () => {
+    const store = new MemoryStore();
+    const def = { ...timed({ kind: "sleep", ms: 0 }), store };
+    const snap = await defineMachine(def).start({});
+    const results = await Promise.all([1, 2, 3].map(() => defineMachine(def).poll()));
+    expect(results.flat()).toHaveLength(1);
+    expect(
+      (await store.trace(snap.runId)).filter(
+        (e) => e.kind === "event" && e.event.type === "resume",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("rethrows store errors other than conflicts", async () => {
+    const store = new MemoryStore();
+    const def = { ...timed({ kind: "sleep", ms: 0 }), store };
+    await defineMachine(def).start({});
+    vi.spyOn(store, "save").mockRejectedValue(new Error("disk full"));
+    await expect(defineMachine(def).poll()).rejects.toThrow("disk full");
+  });
+
+  it("is a no-op for a machine whose timers already resumed the run", async () => {
+    const store = new MemoryStore();
+    const m = defineMachine({ ...timed({ kind: "sleep", ms: 0 }), timers: true, store });
+    const snap = await m.start({});
+    await vi.waitFor(async () => expect((await m.get(snap.runId))?.status).toBe("done"));
+    expect(await m.poll()).toEqual([]);
   });
 });
 

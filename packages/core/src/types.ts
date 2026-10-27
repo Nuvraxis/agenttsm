@@ -87,11 +87,19 @@ export interface LLM {
   complete(request: LLMRequest): Promise<LLMResponse>;
 }
 
+export interface JsonRequest<T> extends LLMRequest {
+  parse: (value: unknown) => T;
+}
+
+export interface StepLLM extends LLM {
+  completeJson<T>(request: JsonRequest<T>): Promise<T>;
+}
+
 export interface Step<S extends string, T> {
   signal: AbortSignal;
   attempt: number;
   tools: T;
-  llm: LLM;
+  llm: StepLLM;
   emit(type: EventType, data?: unknown): void;
   route<A extends S>(allowed: readonly A[], prompt: string): Promise<{ to: A }>;
 }
@@ -124,6 +132,7 @@ export interface MachineDef<C extends object, S extends string, T> {
   store?: Store;
   tools?: T;
   llm?: LLM;
+  timers?: boolean;
 }
 
 export type HttpAccess<C extends object = object> =
@@ -160,6 +169,7 @@ export interface TestResult<C extends object> {
 export interface Machine<C extends object, T> {
   start(ctx: C): Promise<Snapshot<C>>;
   resume(runId: string, input?: unknown): Promise<Snapshot<C>>;
+  poll(): Promise<Snapshot<C>[]>;
   get(runId: string): Promise<Snapshot<C> | undefined>;
   trace(runId: string): Promise<TraceEntry<C>[]>;
   on(type: EventType | "*", listener: Listener): () => void;

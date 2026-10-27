@@ -1,0 +1,26 @@
+# Local PostgreSQL for the @nuvraxis-org/agenttsm-store-postgres tests: `docker compose up -d --wait`,
+# then run the tests with DATABASE_URL set (see packages/store-postgres/README.md).
+name: agenttsm
+
+services:
+  postgres:
+    # Postgres 17, pinned by digest (multi-arch index), the same image CI uses.
+    image: postgres:17.11-alpine3.24@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: agenttsm
+      POSTGRES_PASSWORD: agenttsm
+      POSTGRES_DB: agenttsm
+    ports:
+      # Loopback only: not reachable from the network. Port taken? POSTGRES_PORT=55433 docker
+      # compose up -d, and use that port in DATABASE_URL.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agenttsm -d agenttsm"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

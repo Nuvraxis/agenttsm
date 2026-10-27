@@ -12,8 +12,13 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/conformance/**"],
-      "outputs": ["coverage/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/conformance/**",
+        "$TURBO_ROOT$/packages/core/tests/conformance.ts"
+      ],
+      "outputs": ["coverage/**"],
+      "env": ["DATABASE_URL"]
     },
     "start": {
       "cache": false,

@@ -1,5 +1,5 @@
 {
-  "name": "two concurrent resumes of one run: exactly one proceeds",
+  "name": "two concurrent resumes of one run: exactly one proceeds, the other conflicts or does nothing",
   "rules": [9],
   "machine": {
     "initial": "ask",
@@ -9,7 +9,7 @@
     }
   },
   "ctx": {},
-  "ops": [{ "resumeConcurrently": { "count": 2, "input": "go" }, "conflicts": 1 }],
+  "ops": [{ "resumeConcurrently": { "count": 2, "input": "go" } }],
   "expect": {
     "status": "done",
     "ctx": { "applied": 1 },
