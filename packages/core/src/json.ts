@@ -1,14 +1,24 @@
 import { AgentTsmError } from "./errors.ts";
 
-const FENCED = /^```(?:json)?\s*\n([\s\S]*?)\n?```$/i;
+const FENCE = "```";
 const PREVIEW_CHARS = 200;
 
 const reasonOf = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
+// String checks rather than a regex: the text is model output, and a backtracking pattern over
+// it can take quadratic time.
+function unfence(text: string): string {
+  if (!text.startsWith(FENCE) || !text.endsWith(FENCE)) return text;
+  const newline = text.indexOf("\n");
+  if (newline === -1 || newline + 1 > text.length - FENCE.length) return text;
+  const info = text.slice(FENCE.length, newline).trim().toLowerCase();
+  return info === "" || info === "json" ? text.slice(newline + 1, -FENCE.length) : text;
+}
+
 export function parseJsonOutput<T>(text: string, parse: (value: unknown) => T): T {
   const trimmed = text.trim();
-  const body = FENCED.exec(trimmed)?.[1] ?? trimmed;
+  const body = unfence(trimmed);
   let value: unknown;
   try {
     value = JSON.parse(body);

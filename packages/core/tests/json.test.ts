@@ -21,6 +21,22 @@ describe("parseJsonOutput", () => {
     expect(parseJsonOutput(text, order)).toEqual({ id: "A", qty: 1 });
   });
 
+  it.each([
+    { name: "a fence with another language", text: '```ts\n{"id":"A","qty":1}\n```' },
+    { name: "an unclosed fence", text: '```json\n{"id":"A","qty":1}' },
+    { name: "a fence on one line", text: '```{"id":"A","qty":1}```' },
+    { name: "an empty fence", text: "```json\n```" },
+  ])("does not unwrap $name", ({ text }) => {
+    expect(() => parseJsonOutput(text, order)).toThrow("LLM output is not JSON");
+  });
+
+  it("handles long adversarial output in linear time", () => {
+    const text = `\`\`\`${"\n".repeat(200_000)}x`;
+    const started = performance.now();
+    expect(() => parseJsonOutput(text, order)).toThrow(AgentTsmError);
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
   it("rejects text that is not JSON, with a shortened preview and the cause", () => {
     const text = `Sure! ${"x".repeat(300)}`;
     let error = new AgentTsmError("definition", "did not throw");
