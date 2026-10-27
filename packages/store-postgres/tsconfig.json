@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "declaration": true,
+    "isolatedDeclarations": true,
+    "customConditions": ["@nuvraxis-org/source"]
+  },
+  "include": ["src", "*.config.ts"]
+}
