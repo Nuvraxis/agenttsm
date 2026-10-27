@@ -68,14 +68,14 @@ The format uses plain JSON values and no TypeScript-specific features.
 
 ### Operations (`ops`)
 
-| Operation                                                              | Meaning                                                                                  |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `{ "check": { ...partial snapshot } }`                                 | The current snapshot matches.                                                            |
-| `{ "waitFor": { ...partial snapshot } }`                               | Poll `get(runId)` until it matches; timed waits resume themselves.                       |
-| `{ "resume": { "input": x } }`                                         | `resume(runId, x)`. Add `"noop": true` to assert the result equals the current snapshot. |
-| `{ "resumeConcurrently": { "count": n, "input": x }, "conflicts": c }` | Start `n` resumes at once; exactly `c` reject with a `conflict` error.                   |
-| `{ "restart": true }`                                                  | Define the machine again on the same store, as a new process would, and reload the run.  |
-| `{ "poll": { "resumed": n } }`                                         | `poll()` resumes exactly `n` runs; then reload the run.                                  |
+| Operation                                              | Meaning                                                                                                                                                                                                                                                               |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `{ "check": { ...partial snapshot } }`                 | The current snapshot matches.                                                                                                                                                                                                                                         |
+| `{ "waitFor": { ...partial snapshot } }`               | Poll `get(runId)` until it matches; timed waits resume themselves.                                                                                                                                                                                                    |
+| `{ "resume": { "input": x } }`                         | `resume(runId, x)`. Add `"noop": true` to assert the result equals the current snapshot.                                                                                                                                                                              |
+| `{ "resumeConcurrently": { "count": n, "input": x } }` | Start `n` resumes at once. Any that reject must reject with a `conflict` error; at least one must succeed. Whether a loser conflicts or returns the snapshot unchanged depends on timing, so the scenario's trace shows that only one proceeded; then reload the run. |
+| `{ "restart": true }`                                  | Define the machine again on the same store, as a new process would, and reload the run.                                                                                                                                                                               |
+| `{ "poll": { "resumed": n } }`                         | `poll()` resumes exactly `n` runs; then reload the run.                                                                                                                                                                                                               |
 
 ### Expectations (`expect`)
 

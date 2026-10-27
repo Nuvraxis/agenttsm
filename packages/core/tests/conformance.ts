@@ -40,7 +40,7 @@ type Op =
   | { check: Partial<Snapshot> }
   | { waitFor: Partial<Snapshot> }
   | { resume: { input?: unknown }; noop?: boolean }
-  | { resumeConcurrently: { count: number; input?: unknown }; conflicts: number }
+  | { resumeConcurrently: { count: number; input?: unknown } }
   | { restart: true }
   | { poll: { resumed: number } };
 
@@ -154,11 +154,11 @@ async function apply(
   const results = await Promise.allSettled(
     Array.from({ length: count }, () => machine.resume(snapshot.runId, input)),
   );
-  const conflicts = results.filter((r) => r.status === "rejected" && isConflict(r.reason));
-  expect(conflicts).toHaveLength(op.conflicts);
-  const winner = results.find((r) => r.status === "fulfilled");
-  if (!winner) throw new Error("no concurrent resume succeeded");
-  return winner.value;
+  for (const result of results) {
+    if (result.status === "rejected" && !isConflict(result.reason)) throw result.reason;
+  }
+  expect(results.some((r) => r.status === "fulfilled")).toBe(true);
+  return reload(machine, snapshot.runId);
 }
 
 /**
