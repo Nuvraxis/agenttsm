@@ -57,6 +57,34 @@ target is a compile error, and `defineMachine()` rejects unknown targets at runt
 The `step` argument gives a handler `signal` (aborted on timeout), `attempt`, `emit(type, data)`,
 `tools` and `llm` from `defineMachine`, and `route(allowed, prompt)`.
 
+## Structured output
+
+`step.llm.completeJson({ prompt, system?, parse })` calls the model, parses the text as JSON (a
+surrounding ` ```json ` fence is accepted) and passes the value to `parse`. `parse` is any
+`(value: unknown) => T` that throws on bad input, so valibot, zod or a hand-written check all work
+without core depending on them:
+
+```ts
+import * as v from "valibot";
+
+const Order = v.object({ id: v.string(), qty: v.number() });
+
+extract: {
+  maxRetries: 2,
+  run: async (ctx, step) => {
+    ctx.order = await step.llm.completeJson({
+      prompt: `Extract the order from: ${ctx.email}`,
+      parse: (value) => v.parse(Order, value),
+    });
+    return "confirm";
+  },
+},
+```
+
+Output that isn't JSON, or that `parse` rejects, throws an `AgentTsmError` with code
+`"invalid_output"` (the original error is its `cause`). Like any other error in a handler, it is
+retried up to the state's `maxRetries`, and tokens from every attempt count toward the guards.
+
 ## Pause and resume
 
 A handler pauses a run by returning a `wait` transition. The handler finishes, the snapshot is saved

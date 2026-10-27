@@ -87,11 +87,19 @@ export interface LLM {
   complete(request: LLMRequest): Promise<LLMResponse>;
 }
 
+export interface JsonRequest<T> extends LLMRequest {
+  parse: (value: unknown) => T;
+}
+
+export interface StepLLM extends LLM {
+  completeJson<T>(request: JsonRequest<T>): Promise<T>;
+}
+
 export interface Step<S extends string, T> {
   signal: AbortSignal;
   attempt: number;
   tools: T;
-  llm: LLM;
+  llm: StepLLM;
   emit(type: EventType, data?: unknown): void;
   route<A extends S>(allowed: readonly A[], prompt: string): Promise<{ to: A }>;
 }

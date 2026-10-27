@@ -20,6 +20,7 @@ type Action =
   | { count: string }
   | { tool: string; as: string }
   | { llm: string; as: string }
+  | { llmJson: string; as: string }
   | { copyInput: string }
   | { emit: string; data?: unknown }
   | { delay: number }
@@ -70,6 +71,13 @@ const scenarios: Scenario[] = readdirSync(dir)
   .sort()
   .map((file) => ({ file, ...JSON.parse(readFileSync(new URL(file, dir), "utf8")) }));
 
+function jsonObject(value: unknown): Ctx {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("expected a JSON object");
+  }
+  return value as Ctx;
+}
+
 function toState({
   do: actions = [],
   then = { done: true },
@@ -87,6 +95,11 @@ function toState({
         else if ("route" in action) return step.route(action.route, action.prompt);
         else if ("llm" in action)
           ctx[action.as] = (await step.llm.complete({ prompt: action.llm })).text;
+        else if ("llmJson" in action)
+          ctx[action.as] = await step.llm.completeJson({
+            prompt: action.llmJson,
+            parse: jsonObject,
+          });
         else {
           const tool = step.tools[action.tool];
           if (!tool) throw new Error(`scenario has no tool "${action.tool}"`);
@@ -136,7 +149,7 @@ async function apply(
 describe("conformance", () => {
   it("covers every runtime rule", () => {
     const covered = new Set(scenarios.flatMap((s) => s.rules));
-    expect([...covered].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 8, 9, 10]);
+    expect([...covered].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 8, 9, 10, 11]);
   });
 
   it.each(scenarios)("$file: $name", async (scenario) => {

@@ -12,6 +12,8 @@ describe("defineMachine types", () => {
           to: ["b"],
           run: async (ctx: { topic: string }, step) => {
             expectTypeOf(step.tools.search).toEqualTypeOf<(q: string) => Promise<string[]>>();
+            const parsed = step.llm.completeJson({ prompt: "p", parse: (v) => v as { n: 1 } });
+            expectTypeOf(parsed).toEqualTypeOf<Promise<{ n: 1 }>>();
             const { to } = await step.route(["b"], ctx.topic);
             expectTypeOf(to).toEqualTypeOf<"b">();
             return to;

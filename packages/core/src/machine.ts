@@ -1,5 +1,6 @@
 import { AgentTsmError } from "./errors.ts";
 import { httpHandlers } from "./http.ts";
+import { parseJsonOutput } from "./json.ts";
 import { toMermaid } from "./mermaid.ts";
 import { createRoute } from "./route.ts";
 import { MemoryStore } from "./store.ts";
@@ -131,14 +132,17 @@ function build<C extends object, S extends string, T>(
     const ctx = structuredClone(snap.ctx);
     const { timeoutMs } = state;
     const signal = timeoutMs ? AbortSignal.timeout(timeoutMs) : new AbortController().signal;
-    const llm: t.LLM = {
-      async complete(request) {
-        if (!def.llm) throw new AgentTsmError("definition", "no llm was passed to defineMachine");
-        const response = await def.llm.complete({ signal, ...request });
-        usage.tokens += response.tokens ?? 0;
-        usage.costUsd += response.costUsd ?? 0;
-        return response;
-      },
+    const complete = async (request: t.LLMRequest): Promise<t.LLMResponse> => {
+      if (!def.llm) throw new AgentTsmError("definition", "no llm was passed to defineMachine");
+      const response = await def.llm.complete({ signal, ...request });
+      usage.tokens += response.tokens ?? 0;
+      usage.costUsd += response.costUsd ?? 0;
+      return response;
+    };
+    const llm: t.StepLLM = {
+      complete,
+      completeJson: async ({ parse, ...request }) =>
+        parseJsonOutput((await complete(request)).text, parse),
     };
     const emit = (type: t.EventType, data?: unknown): void => {
       events.push(event(snap, type, data));

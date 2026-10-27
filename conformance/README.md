@@ -44,15 +44,16 @@ The format uses plain JSON values and no TypeScript-specific features.
 
 ### Actions (`do`)
 
-| Action                                   | Effect                                                           |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| `{ "count": "k" }`                       | `ctx.k = (ctx.k ?? 0) + 1`                                       |
-| `{ "copyInput": "k" }`                   | `ctx.k = ctx.lastInput`, or `null` when there is none            |
-| `{ "tool": "name", "as": "k" }`          | `ctx.k = await tools.name(ctx)`                                  |
-| `{ "llm": "prompt", "as": "k" }`         | `ctx.k = (await step.llm.complete({ prompt })).text`             |
-| `{ "emit": "type", "data": x }`          | `step.emit(type, data)`                                          |
-| `{ "delay": ms }`                        | wait `ms` milliseconds without observing `step.signal`           |
-| `{ "route": ["a", "b"], "prompt": "p" }` | return `await step.route(["a", "b"], "p")`; ends the action list |
+| Action                                   | Effect                                                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `{ "count": "k" }`                       | `ctx.k = (ctx.k ?? 0) + 1`                                                                                                                |
+| `{ "copyInput": "k" }`                   | `ctx.k = ctx.lastInput`, or `null` when there is none                                                                                     |
+| `{ "tool": "name", "as": "k" }`          | `ctx.k = await tools.name(ctx)`                                                                                                           |
+| `{ "llm": "prompt", "as": "k" }`         | `ctx.k = (await step.llm.complete({ prompt })).text`                                                                                      |
+| `{ "llmJson": "prompt", "as": "k" }`     | `ctx.k = await step.llm.completeJson({ prompt, parse })`, where `parse` throws unless the value is a JSON object (not an array or `null`) |
+| `{ "emit": "type", "data": x }`          | `step.emit(type, data)`                                                                                                                   |
+| `{ "delay": ms }`                        | wait `ms` milliseconds without observing `step.signal`                                                                                    |
+| `{ "route": ["a", "b"], "prompt": "p" }` | return `await step.route(["a", "b"], "p")`; ends the action list                                                                          |
 
 `transition` values use the library's shapes: `"name"`, `{ "to": "name" }`,
 `{ "to": "name", "wait": { "kind": "human" | "webhook" | "until" | "sleep", ... } }` or
@@ -90,18 +91,19 @@ value; extra keys in the actual value are ignored. Arrays must have the same len
 
 ## Rules covered
 
-| Rule                                                    | Scenarios                                      |
-| ------------------------------------------------------- | ---------------------------------------------- |
-| 1. Snapshot saved after every step                      | 01, 02, 05                                     |
-| 2. Retries with backoff, attempt in snapshot            | 02, 03, 04, 13                                 |
-| 3. Per-state timeout via `AbortSignal`                  | 04                                             |
-| 4. `wait` transitions, single resume path, no-op resume | 05, 06, 07                                     |
-| 5. Guards checked before every step                     | 08, 09                                         |
-| 6. Events                                               | 01, 02, 03, 05, 12                             |
-| 7. Zero runtime dependencies                            | checked by `packages/core/tests/smoke.test.ts` |
-| 8. Unknown targets fail at definition time              | 10                                             |
-| 9. Optimistic concurrency on resume                     | 11                                             |
-| 10. Only the latest resume sets `ctx.lastInput`         | 14                                             |
+| Rule                                                                                                       | Scenarios                                      |
+| ---------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| 1. Snapshot saved after every step                                                                         | 01, 02, 05                                     |
+| 2. Retries with backoff, attempt in snapshot                                                               | 02, 03, 04, 13, 15                             |
+| 3. Per-state timeout via `AbortSignal`                                                                     | 04                                             |
+| 4. `wait` transitions, single resume path, no-op resume                                                    | 05, 06, 07                                     |
+| 5. Guards checked before every step                                                                        | 08, 09                                         |
+| 6. Events                                                                                                  | 01, 02, 03, 05, 12                             |
+| 7. Zero runtime dependencies                                                                               | checked by `packages/core/tests/smoke.test.ts` |
+| 8. Unknown targets fail at definition time                                                                 | 10                                             |
+| 9. Optimistic concurrency on resume                                                                        | 11                                             |
+| 10. Only the latest resume sets `ctx.lastInput`                                                            | 14                                             |
+| 11. `completeJson` output that is not JSON, or that `parse` rejects, is a retryable `invalid_output` error | 15, 16                                         |
 
 ## Adding a scenario
 

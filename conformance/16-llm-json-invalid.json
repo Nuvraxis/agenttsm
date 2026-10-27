@@ -1,0 +1,21 @@
+{
+  "name": "completeJson output that keeps failing parse fails the run once retries are spent",
+  "rules": [11],
+  "machine": {
+    "initial": "extract",
+    "states": {
+      "extract": {
+        "do": [{ "llmJson": "extract the order", "as": "order" }],
+        "then": { "done": true }
+      }
+    }
+  },
+  "llm": [{ "text": "\"just a string\"" }],
+  "ctx": {},
+  "expect": {
+    "status": "failed",
+    "reasonContains": "LLM output failed validation",
+    "llmCalls": 1,
+    "events": [{ "type": "failed", "state": "extract" }]
+  }
+}
