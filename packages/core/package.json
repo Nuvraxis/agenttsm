@@ -1,6 +1,6 @@
 {
   "name": "@nuvraxis-org/agenttsm",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A small, typed, zero-dependency state machine runtime for AI agent workflows.",
   "keywords": [
     "state-machine",

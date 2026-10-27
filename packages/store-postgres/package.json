@@ -1,6 +1,6 @@
 {
   "name": "@nuvraxis-org/agenttsm-store-postgres",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "PostgreSQL Store for @nuvraxis-org/agenttsm: atomic, version-checked snapshots and traces.",
   "keywords": [
     "state-machine",
@@ -44,7 +44,7 @@
     "test": "vitest run --coverage"
   },
   "peerDependencies": {
-    "@nuvraxis-org/agenttsm": ">=0.2.0 <1",
+    "@nuvraxis-org/agenttsm": ">=0.3.0 <1.0.0-0",
     "pg": "^8.0.0"
   },
   "peerDependenciesMeta": {
